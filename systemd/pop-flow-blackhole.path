@@ -1,0 +1,9 @@
+[Unit]
+Description=POP Flow black hole: watch the desktop
+
+[Path]
+PathChanged=@DESKTOP@
+Unit=pop-flow-blackhole.service
+
+[Install]
+WantedBy=default.target

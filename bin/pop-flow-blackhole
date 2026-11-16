@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# POP Flow — cosmic-blackhole: move the loose files that land on the desktop
+# into one folder (CAOS by default). Folders, links and launchers (.desktop)
+# you put on the desktop stay where they are, and so do hidden files and
+# downloads still in progress.
+#
+#   pop-flow-blackhole [FOLDER]
+#
+# FOLDER is the destination's name inside the desktop, or an absolute path.
+# Without it: $POP_FLOW_BLACKHOLE_DIR, else "CAOS". Run by the
+# pop-flow-blackhole.path unit on every change to the desktop, and every 2 min
+# by the .timer as a safety net.
+set -uo pipefail
+
+DESK="$(xdg-user-dir DESKTOP 2>/dev/null)"
+[ -n "$DESK" ] && [ "$DESK" != "$HOME" ] || DESK="$HOME/Desktop"
+[ -d "$DESK" ] || exit 0
+
+name=${1:-${POP_FLOW_BLACKHOLE_DIR:-CAOS}}
+case $name in
+    /*) HOLE=$name ;;
+    *)  HOLE=$DESK/$name ;;
+esac
+# A destination that is the desktop itself would loop forever.
+[ "$(realpath -m "$HOLE")" != "$(realpath -m "$DESK")" ] || exit 1
+mkdir -p "$HOLE"
+sleep 2  # let downloads and saves finish
+
+shopt -s nullglob dotglob
+for round in 1 2 3 4 5 6 7 8 9 10; do
+    pending=0
+    for f in "$DESK"/*; do
+        file=$(basename "$f")
+        [ -f "$f" ] && [ ! -L "$f" ] || continue          # regular files only
+        case $file in
+            .*|*.desktop|*.part|*.crdownload|*.download|*.tmp|*.partial|~*|*~) continue ;;
+        esac
+        # Still being written (changed under 3 s ago)? Next round.
+        if (( $(date +%s) - $(stat -c %Y "$f") < 3 )); then
+            pending=1
+            continue
+        fi
+        dest=$HOLE/$file
+        if [ -e "$dest" ]; then
+            base=${file%.*} ext=${file##*.}
+            if [ "$base" = "$file" ]; then ext=""; else ext=".$ext"; fi
+            i=1
+            while [ -e "$HOLE/$base ($i)$ext" ]; do i=$((i + 1)); done
+            dest="$HOLE/$base ($i)$ext"
+        fi
+        mv -n -- "$f" "$dest"
+    done
+    [ "$pending" = 0 ] && break
+    sleep 3
+done
+exit 0

@@ -1,0 +1,7 @@
+[Unit]
+Description=POP Flow black hole: loose desktop files go to their folder
+
+[Service]
+Type=oneshot
+Environment="POP_FLOW_BLACKHOLE_DIR=@FOLDER@"
+ExecStart=%h/.local/bin/pop-flow-blackhole

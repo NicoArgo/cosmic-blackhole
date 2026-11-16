@@ -1,0 +1,10 @@
+[Unit]
+Description=POP Flow black hole: sweep every 2 min (safety net)
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=2min
+Unit=pop-flow-blackhole.service
+
+[Install]
+WantedBy=timers.target
